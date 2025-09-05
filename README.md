@@ -1,0 +1,1 @@
+# aws-cassandra-three-node
