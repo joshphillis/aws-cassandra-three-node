@@ -45,6 +45,11 @@ Create and run the modular setup script:
 
 ```bash
 nano cassandra-setup.sh
+Copy and Paste the Cassandra Script3
+CTRL+O to save
+Enter
+CTRL+X to exit
+
 chmod 777 cassandra-setup.sh
 ./cassandra-setup.sh
 ```
