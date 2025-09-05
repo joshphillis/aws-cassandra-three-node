@@ -2,7 +2,7 @@
 
 # 🧭 Cassandra 3-Node Cluster Deployment (Script 3 Edition)
 
-This guide walks you through deploying a rack-aware, multi-AZ Cassandra 3.11.3 cluster on AWS EC2 using Ubuntu 22.04. It includes hardened setup steps, a modular configuration script, and troubleshooting insights based on real-world deployment experience.
+This guide walks you through deploying a rack-aware, multi-AZ Cassandra 3.11.3 cluster on AWS EC2 using Ubuntu 22.04. It includes hardened setup steps, a modular configuration script, manual provisioning instructions, and troubleshooting insights based on real-world deployment experience.
 
 ---
 
@@ -14,7 +14,59 @@ This guide walks you through deploying a rack-aware, multi-AZ Cassandra 3.11.3 c
 - **Security Group**: Open TCP ports `7000`, `7001`, `7199`, `9042`, `9160`  
 - **Cluster Name**: `flipbasket-cluster`  
 - **Datacenter**: `DC1`  
-- **Racks**: `r1`, `r2`, `r3`
+- **Racks**: `r1`, `r2`, `r3`  
+
+---
+
+## ☁️ AWS Infrastructure Provisioning (Manual via AWS Console)
+
+Before configuring Cassandra, provision the following resources using the AWS Management Console:
+
+### ✅ Step 0: Prerequisites
+
+- AWS account with EC2 access  
+- Existing VPC and subnets across 3 Availability Zones  
+- SSH key pair created and downloaded (`.pem` file)  
+- Security group configured with proper inbound rules  
+
+### 🖥️ 1. Launch 3 EC2 Instances
+
+Provision three EC2 instances with the following settings:
+
+- **AMI**: Ubuntu Server 22.04 LTS (HVM), SSD Volume Type  
+- **Instance Type**: `t3.small`  
+- **Availability Zones**:
+  - Instance 1 → AZ1  
+  - Instance 2 → AZ4  
+  - Instance 3 → AZ6  
+- **Key Pair**: Select your existing key pair  
+- **Security Group**: Use the Cassandra SG (see below)  
+- **Tags**:
+  - Instance 1: `Name=R1`, `Rack=r1`, `Datacenter=DC1`  
+  - Instance 2: `Name=R2`, `Rack=r2`, `Datacenter=DC1`  
+  - Instance 3: `Name=R3`, `Rack=r3`, `Datacenter=DC1`  
+
+### 🔐 2. Create a Security Group
+
+Create a new security group named `cassandra-sg` with the following **inbound rules**:
+
+| Type         | Protocol | Port Range | Source           | Purpose                      |
+|--------------|----------|------------|------------------|------------------------------|
+| SSH          | TCP      | 22         | `0.0.0.0/0`      | Remote access                |
+| Custom TCP   | TCP      | 7000       | `172.31.0.0/16`  | Cassandra gossip             |
+| Custom TCP   | TCP      | 7001       | `172.31.0.0/16`  | SSL gossip (if enabled)      |
+| Custom TCP   | TCP      | 7199       | `172.31.0.0/16`  | JMX (nodetool)               |
+| Custom TCP   | TCP      | 9042       | `172.31.0.0/16`  | CQL client access            |
+| Custom TCP   | TCP      | 9160       | `172.31.0.0/16`  | Thrift (optional)            |
+
+**Outbound rules**: Allow all traffic (`0.0.0.0/0`)
+
+### 📡 3. Retrieve Private IPs
+
+After launching, go to **EC2 → Instances → Networking tab** and note the **private IP address** of each instance. You’ll use these during Script 3 setup:
+- Instance 1 → Seed IP + Private IP
+- Instance 2 → Private IP
+- Instance 3 → Private IP
 
 ---
 
@@ -45,23 +97,23 @@ Create and run the modular setup script:
 
 ```bash
 nano cassandra-setup.sh
-Copy and Paste the Cassandra Script3
-CTRL+O to save
-Enter
-CTRL+X to exit
+```
 
+Paste the full Script 3 contents, then:
+
+```bash
 chmod 777 cassandra-setup.sh
 ./cassandra-setup.sh
 ```
 
 ### Script Prompts:
-- **This node's private IP**: e.g., `172.31.11.187`
-- **Seed node IP**: Use Instance 1’s private IP (same as above for seed node)
-- **Datacenter name**: `DC1`
+- **This node's private IP**: e.g., `172.31.11.187`  
+- **Seed node IP**: Use Instance 1’s private IP  
+- **Datacenter name**: `DC1`  
 - **Rack name**:
-  - Instance 1 → `r1`
-  - Instance 2 → `r2`
-  - Instance 3 → `r3`
+  - Instance 1 → `r1`  
+  - Instance 2 → `r2`  
+  - Instance 3 → `r3`  
 
 ---
 
@@ -81,6 +133,7 @@ cd /opt/apache-cassandra-3.11.3/bin
 ```
 
 Let it run in the foreground. You should see:
+
 ```
 No host ID found, created ...
 ```
@@ -139,13 +192,13 @@ Each node was started before others were reachable, causing isolated bootstrappi
 - Cassandra ring formed successfully  
 - Rack-aware topology across AZs  
 - Ownership distributed evenly  
-- `nodetool` and `cqlsh` fully operational
+- `nodetool` and `cqlsh` fully operational  
 
+---
 
 ## 🪖 Built By
 
 **Joshua Phillis**  
 Retired U.S. Army Major | Cloud Infrastructure Engineer | Mentor & Educator  
-Specializing in secure Azure/AWS deployments, reproducible labs, and veteran advocacy
-
-
+Specializing in secure Azure/AWS deployments, reproducible labs, and veteran advocacy  
+This deployment is part of my [GitHub portfolio](https://github.com/) and reflects my commitment to building resilient, mission-ready cloud infrastructure.
