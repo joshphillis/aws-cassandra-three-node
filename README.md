@@ -41,10 +41,7 @@ Provision three EC2 instances with the following settings:
   - Instance 3 → AZ6  
 - **Key Pair**: Select your existing key pair  
 - **Security Group**: Use the Cassandra SG (see below)  
-- **Tags**:
-  - Instance 1: `Name=R1`, `Rack=r1`, `Datacenter=DC1`  
-  - Instance 2: `Name=R2`, `Rack=r2`, `Datacenter=DC1`  
-  - Instance 3: `Name=R3`, `Rack=r3`, `Datacenter=DC1`  
+
 
 ### 🔐 2. Create a Security Group
 
