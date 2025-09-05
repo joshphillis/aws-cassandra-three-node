@@ -1,0 +1,54 @@
+#!/bin/bash
+
+echo "🔧 Cassandra Node Configuration"
+
+# Prompt for inputs
+read -p "Enter this node's private IP address: " NODE_IP
+read -p "Enter the seed node IP address: " SEED_IP
+read -p "Enter the datacenter name (e.g., DC1): " DC_NAME
+read -p "Enter the rack name (e.g., rack-a, rack-b): " RACK_NAME
+
+# Set environment variables
+echo "📦 Setting environment variables..."
+echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.profile
+echo "export CASSANDRA_HOME=/opt/apache-cassandra-3.11.3" >> ~/.profile
+echo "export PATH=\$PATH:\$CASSANDRA_HOME/bin" >> ~/.profile
+source ~/.profile
+
+# Patch /root/.bashrc to avoid PS1 errors
+echo "🔧 Patching /root/.bashrc..."
+sudo sed -i 's/\[ -z "\$PS1" \]/[ -z "${PS1:-}" ]/' /root/.bashrc
+
+# Configure cassandra.yaml
+echo "🧾 Configuring cassandra.yaml..."
+CONFIG_FILE="/opt/apache-cassandra-3.11.3/conf/cassandra.yaml"
+
+sudo sed -i "s/^cluster_name:.*/cluster_name: 'flipbasket-cluster'/" $CONFIG_FILE
+sudo sed -i "s/^listen_address:.*/listen_address: $NODE_IP/" $CONFIG_FILE
+sudo sed -i "s/^rpc_address:.*/rpc_address: 0.0.0.0/" $CONFIG_FILE
+
+# Add or update broadcast_rpc_address
+if grep -q "^broadcast_rpc_address:" $CONFIG_FILE; then
+  sudo sed -i "s/^broadcast_rpc_address:.*/broadcast_rpc_address: $NODE_IP/" $CONFIG_FILE
+else
+  echo "broadcast_rpc_address: $NODE_IP" | sudo tee -a $CONFIG_FILE > /dev/null
+fi
+
+# Set seed IP
+sudo sed -i "/- seeds:/c\      - seeds: \"$SEED_IP\"" $CONFIG_FILE
+
+# Set endpoint snitch
+sudo sed -i "s/^endpoint_snitch:.*/endpoint_snitch: GossipingPropertyFileSnitch/" $CONFIG_FILE
+
+# Configure rackdc
+echo "🗺️ Setting rack and datacenter..."
+RACKDC_FILE="/opt/apache-cassandra-3.11.3/conf/cassandra-rackdc.properties"
+echo "dc=$DC_NAME" | sudo tee $RACKDC_FILE > /dev/null
+echo "rack=$RACK_NAME" | sudo tee -a $RACKDC_FILE > /dev/null
+
+# Wipe system metadata
+echo "🧹 Cleaning previous data..."
+sudo rm -rf /opt/apache-cassandra-3.11.3/data/*
+
+echo "✅ Configuration complete. You can now start Cassandra with:"
+echo "    cassandra -R"
